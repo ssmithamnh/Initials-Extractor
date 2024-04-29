@@ -37,8 +37,12 @@ if uploaded_file is not None:
     grouped_df = df.groupby(['Session', 'Course'])['doc_name'].apply(lambda names: ', '.join(names)).reset_index()
 
     # Display the formatted output
+    last_session = None
     for _, row in grouped_df.iterrows():
-        st.write(f"Session {row['Session']} - {row['Course']}: {row['doc_name']}")
+        if row['Session'] != last_session:
+            st.header(f"Session {row['Session']}")  # Set session as a header
+            last_session = row['Session']
+        st.write(f"{row['Course']}: {row['doc_name']}")
 
     # Provide download functionality for the updated CSV
     csv_buffer = BytesIO()
