@@ -1,52 +1,77 @@
 import streamlit as st
 import pandas as pd
+import re
+from io import BytesIO
 import openpyxl
-from io import StringIO
 
-# Function to get initials from a name
-def get_initials(name):
-    # Split the name into parts and get the first letter of each part
-    parts = name.split()
-    initials = ''.join([part[0].upper() for part in parts])
-    return initials
+# Title of the Streamlit app
+st.title("Finitials")
 
-# Function to convert DataFrame to CSV download link
-def convert_df_to_csv(df):
-    # Convert DataFrame to CSV
-    csv = df.to_csv(index=False)
-    # Create a string buffer
-    buffer = StringIO(csv)
-    # Return the buffer
-    return buffer.getvalue()
+# File uploader for Excel files
+uploaded_file = st.file_uploader("Upload an Excel file", type=['xlsx'])
 
-# Streamlit app main body
-def main():
-    st.title('Initials Extractor')
+# If a file is uploaded
+if uploaded_file is not None:
+    # Read the uploaded Excel file into a DataFrame
+    df = pd.read_excel(uploaded_file)
 
-    # File uploader allows user to add their own Excel
-    uploaded_file = st.file_uploader("Choose an Excel file", type=['xlsx'])
+    # Create 'doc_name' column with concatenated "First" and "Last" names
+    df['doc_name'] = df["First"] + " " + df["Last"]
 
-    if uploaded_file is not None:
-        # Read Excel file into DataFrame
-        try:
-            df = pd.read_excel(uploaded_file)
+    # Function to format names with initials and last names
+    def fred_name(s):
+        # Use regular expression to extract the first letter of each word
+        initials = re.findall(r'\b\w', s)
 
-            # Check if 'Name' column is in the DataFrame
-            if 'Name' in df.columns:
-                # Apply the get_initials function
-                df['Initials'] = df['Name'].apply(get_initials)
-                st.write('Updated DataFrame with Initials:')
-                st.dataframe(df)
+        # Extract the last word as the last name
+        last_name = s.split()[-1]
 
-                # Convert updated DataFrame to CSV
-                csv = convert_df_to_csv(df)
-                # Create download link
-                st.download_button(label="Download CSV", data=csv, file_name='updated_data.csv', mime='text/csv')
-            else:
-                st.error("The uploaded file does not contain a 'Name' column.")
-        except Exception as e:
-            st.error(f"An error occurred while reading the Excel file: {e}")
+        # Combine the initials and last name with dots
+        result = '.'.join(initials[:-1]).upper() + '.' + last_name.title()
+        return result
 
-# Run the app
-if __name__ == "__main__":
-    main()
+    # Apply the function to 'doc_name'
+    df['doc_name'] = df['doc_name'].apply(fred_name)
+
+    # Get unique courses from the 'Course' column
+    courses = df['Course'].str.split(',\s*').explode().unique().tolist()
+
+    # Function to get names for each course
+    def get_names_for_course(course):
+        # Filter DataFrame for the specific course
+        course_df = df[df['Course'] == course]
+
+        # Extract names from the DataFrame
+        names = course_df['doc_name']
+
+        # Format the names as a comma-separated string
+        formatted_names = ', '.join(names.tolist())
+        return formatted_names
+
+    # Print names for each unique course
+    formatted_outputs = []
+    for course in courses:
+        names_for_course = get_names_for_course(course)
+        if names_for_course:
+            formatted_outputs.append(f"{course}: {names_for_course}")
+        else:
+            formatted_outputs.append(f"{course}: No students found")
+
+    # Display the formatted output
+    for output in formatted_outputs:
+        st.write(output)
+    
+    # Provide download functionality for the updated CSV
+    csv_buffer = BytesIO()
+    df.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)
+    
+    st.download_button(
+        label="Download Updated CSV",
+        data=csv_buffer,
+        file_name="updated_data.csv",
+        mime="text/csv"
+    )
+else:
+    # If no file is uploaded, prompt the user to upload one
+    st.write("Please upload an Excel file to process.")
