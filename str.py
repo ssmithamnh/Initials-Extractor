@@ -33,34 +33,13 @@ if uploaded_file is not None:
     # Apply the function to 'doc_name'
     df['doc_name'] = df['doc_name'].apply(fred_name)
 
-    # Get unique courses from the 'Course' column
-    courses = df['Course'].str.split(',\s*').explode().unique().tolist()
-
-    # Function to get names for each course
-    def get_names_for_course(course):
-        # Filter DataFrame for the specific course
-        course_df = df[df['Course'] == course]
-
-        # Extract names from the DataFrame
-        names = course_df['doc_name']
-
-        # Format the names as a comma-separated string
-        formatted_names = ', '.join(names.tolist())
-        return formatted_names
-
-    # Print names for each unique course
-    formatted_outputs = []
-    for course in courses:
-        names_for_course = get_names_for_course(course)
-        if names_for_course:
-            formatted_outputs.append(f"{course}: {names_for_course}")
-        else:
-            formatted_outputs.append(f"{course}: No students found")
+    # Group by 'Session' and 'Course' and collect names
+    grouped_df = df.groupby(['Session', 'Course'])['doc_name'].apply(lambda names: ', '.join(names)).reset_index()
 
     # Display the formatted output
-    for output in formatted_outputs:
-        st.write(output)
-    
+    for _, row in grouped_df.iterrows():
+        st.write(f"Session {row['Session']} - {row['Course']}: {row['doc_name']}")
+
     # Provide download functionality for the updated CSV
     csv_buffer = BytesIO()
     df.to_csv(csv_buffer, index=False)
