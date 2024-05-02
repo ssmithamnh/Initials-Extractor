@@ -3,7 +3,6 @@ import pandas as pd
 import re
 from io import BytesIO
 import openpyxl
-import pyperclip  # Importing pyperclip for clipboard functionalities
 
 # Title of the Streamlit app
 st.title("Finitials")
@@ -46,11 +45,12 @@ if uploaded_file is not None:
 
         text_to_copy = f"{row['Course']}: {row['doc_name']}"
         st.text(text_to_copy)
-        
-        # Copy to clipboard button
-        if st.button("Copy text", key=f"copy_{row['Session']}_{row['Course']}"):
-            pyperclip.copy(text_to_copy)
-            st.success("Copied to clipboard!")
+
+        # Modified to use Streamlit's clipboard feature
+        st.markdown("Click to copy:", unsafe_allow_html=True)
+        copy_button = st.button("Copy text", key=f"copy_{row['Session']}_{row['Course']}")
+        if copy_button:
+            st.markdown(f"`{text_to_copy}`", unsafe_allow_html=True)
 
     # Provide download functionality for the updated CSV
     csv_buffer = BytesIO()
