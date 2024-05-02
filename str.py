@@ -3,6 +3,7 @@ import pandas as pd
 import re
 from io import BytesIO
 import openpyxl
+import pyperclip  # Importing pyperclip for clipboard functionalities
 
 # Title of the Streamlit app
 st.title("Finitials")
@@ -36,13 +37,20 @@ if uploaded_file is not None:
     # Group by 'Session' and 'Course' and collect names
     grouped_df = df.groupby(['Session', 'Course'])['doc_name'].apply(lambda names: ', '.join(names)).reset_index()
 
-    # Display the formatted output
-    last_session = None
+    # Display the formatted output by session
+    current_session = None
     for _, row in grouped_df.iterrows():
-        if row['Session'] != last_session:
-            st.header(f"Session {row['Session']}")  # Set session as a header
-            last_session = row['Session']
-        st.write(f"{row['Course']}: {row['doc_name']}")
+        if current_session != row['Session']:
+            current_session = row['Session']
+            st.subheader(f"Session {row['Session']}")
+
+        text_to_copy = f"{row['Course']}: {row['doc_name']}"
+        st.text(text_to_copy)
+        
+        # Copy to clipboard button
+        if st.button("Copy text", key=f"copy_{row['Session']}_{row['Course']}"):
+            pyperclip.copy(text_to_copy)
+            st.success("Copied to clipboard!")
 
     # Provide download functionality for the updated CSV
     csv_buffer = BytesIO()
